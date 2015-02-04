@@ -1,16 +1,26 @@
 __author__ = 'siy'
 
-import cx_Oracle
+import aig.erm.sp.db as db
 
-print("db test")
+sql = r'''
+select cr.*, noi.CRE_VAR_VALUE/cr.CRE_var_value px from (
+       select * from
+              cre_aig_forecast_alan_dev
+              where CRE_VAR_NAME = 'CR') cr,
+       (select * from
+              cre_aig_forecast_alan_dev
+              where CRE_VAR_NAME = 'NOI') noi
+where cr.forecast_version = '2013Q4'
+and cr.scenario_name = 'Stress_99p8pct'
+and cr.MSA_NAME = 'PPR54'
+and cr.forecast_version = noi.forecast_version
+and cr.scenario_name = noi.scenario_name
+and cr.forecast_period = noi.forecast_period
+and cr.msa_name = noi.msa_name
+and cr.property_type = noi.property_type'''
 
-con = cx_Oracle.connect('erm_riskagg', 'ErM_R15k', 'idwqa.aig.com')
-cur = con.cursor()
-cur.execute('select * from analytics.v_ccar_analytics_raw_erm')
+result = db.db_get('idwdev', 'erm_riskagg', 'aig_1_amg', sql)
+all_px = map(lambda d: d['PX'], result)
 
-row = cur.fetchone()
-print(row)
-cur.close()
-con.close()
-
+print(list(all_px)[:5])
 
