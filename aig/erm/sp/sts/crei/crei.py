@@ -9,6 +9,8 @@ us_weight_apt = 0.15
 us_weight_office = 0.34
 us_weight_retail = 0.44
 us_weight_warehouse = 0.07
+us_blend_ticker = 'EC.USD.CRE.INDEX.BLEND.PPR'
+euro_blend_ticker = 'EC.EUR.CRE.INDEX.BLEND.PPR'
 euro_scen = 'price_99_8_th'
 num_periods = 19
 
@@ -187,37 +189,41 @@ def get_result(db_conn, sql, num_records):
 
 
 db_conn = db.get_conn('idwdev', 'erm_riskagg', 'aig_1_amg')
+output = []
 
 # US MSA
 for m in us_scen_map:
     sql = us_msa_sql_template.format(scenario=us_scen, msa=m['msa'],
                                      forecast_version=forecast_version, prop_type=m['prop_type'])
-    result = get_result(db_conn, sql, num_periods)
-    result = map(lambda r: dict(r, **{'TICKER': m['ticker']}), result)
-    result = list(result)
-    print(list(result))
+    rs = get_result(db_conn, sql, num_periods)
+    rs = [dict(r, **{'TICKER': m['ticker']}) for r in rs]
+    output.append(rs)
 
 # US Blend
 us_blend_sql = us_blend_sql_template.format(scenario=us_scen, forecast_version=forecast_version,
                                             weight_apt=us_weight_apt, weight_office=us_weight_apt,
                                             weight_retail=us_weight_retail, weight_warehouse=us_weight_warehouse)
-result = get_result(db_conn, us_blend_sql, num_periods)
-print(result)
+us_blend_res = get_result(db_conn, us_blend_sql, num_periods)
+us_blend_res = [dict(r, **{'TICKER': us_blend_ticker}) for r in us_blend_res]
+output.append(us_blend_res)
 
 # Euro MSA
 for m in euro_msa_map:
     sql = euro_msa_sql_template.format(scenario=euro_scen, msa=m['msa'],
                                        forecast_version=forecast_version, prop_type=m['prop_type'])
-    result = get_result(db_conn, sql, num_periods)
-    result = map(lambda r: dict(r, **{'TICKER': m['ticker']}), result)
-    result = list(result)
-    result = [dict(r, **{'PRICE': float(r['PRICE']) / float(result[0]['PRICE'])}) for r in result]
-    print(result)
+    rs = get_result(db_conn, sql, num_periods)
+    rs = [dict(r, **{'TICKER': m['ticker'], 'PRICE': float(r['PRICE']) / float(rs[0]['PRICE'])}) for r in rs]
+    output.append(rs)
 
 # Euro Blend
 euro_blend_sql = euro_blend_sql_template.format(forecast_version=forecast_version)
-result = get_result(db_conn, euro_blend_sql, num_periods)
-result = [dict(r, **{'PRICE': float(r['PRICE']) / float(result[0]['PRICE'])}) for r in result]
-print(result)
+euro_blend_res = get_result(db_conn, euro_blend_sql, num_periods)
+euro_blend_res = [
+    dict(r, **{'TICKER': euro_blend_ticker, 'PRICE': float(r['PRICE']) / float(euro_blend_res[0]['PRICE'])}) for r in
+    euro_blend_res]
+output.append(euro_blend_res)
 
 db_conn.close()
+
+for i in output:
+    print(i)
