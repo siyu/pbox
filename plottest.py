@@ -22,8 +22,6 @@ and cr.msa_name = noi.msa_name
 and cr.property_type = noi.property_type
 order by cr.msa_name, cr.scenario_name, cr.property_type, cr.forecast_period'''
 
-result_legacy = result = db.db_get('idwdev', 'erm_riskagg', 'aig_1_amg', sql_legacy)
-
 sql_improved = r'''
 select cr.*, noi.CRE_VAR_VALUE/cr.CRE_var_value px from (
        select * from
@@ -42,7 +40,9 @@ and cr.msa_name = noi.msa_name
 and cr.property_type = noi.property_type
 order by cr.msa_name, cr.scenario_name, cr.property_type, cr.forecast_period'''
 
-result_improved = db.db_get('idwdev', 'erm_riskagg', 'aig_1_amg', sql_improved)
+db_conn = db.get_conn('idwdev', 'erm_riskagg', 'aig_1_amg')
+result_legacy = result = db.exec(db_conn, sql_legacy)
+result_improved = db.exec(db_conn, sql_improved)
 
 num_data_pts = 48
 # filter by property type
@@ -54,5 +54,7 @@ px_improved = list(it.islice(map(lambda d: d['PX'], result_improved),num_data_pt
 
 series = [{'x': periods, 'y': px_legacy, 'marker': '-', 'label': 'Legacy'},
           {'x': periods, 'y': px_improved, 'marker': '-', 'label': 'Improved'}]
+
+db_conn.close()
 
 p.plot('AIG', 'Period', 'Price', series)
