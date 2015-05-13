@@ -96,10 +96,25 @@ def earning_growth_score(earning_growth):
     return score
 
 
-def check_score(d):
-    if convert_num(d['Price']) < 1 or convert_num(d['Avg Volume']) < 100000 or \
-                    convert_num(d['Market Cap']) < 100000000 or convert_num(d['52W High']) > -0.2:
+def pred_price(d): return convert_num(d['Price']) < 1
+
+
+def pred_vol(d): return convert_num(d['Avg Volume']) < 100000
+
+
+def pred_mkt_cap(d): return convert_num(d['Market Cap']) < 100000000
+
+
+def pred_52w_high_chg(d): return convert_num(d['52W High']) > -0.2
+
+
+def pred_overbought(d): return convert_num(d['RSI (14)']) > 60
+
+
+def check_score(d, *preds):
+    if any([f(d) for f in (pred_price, pred_vol, pred_mkt_cap) + preds]):
         return 0
+
     score = pe_score(convert_num(d['Forward P/E'])) + \
             pfcf_score(convert_num(d['P/FCF'])) + \
             ps_score(convert_num(d['P/S'])) + \
@@ -132,7 +147,7 @@ def convert_num(val):
         return 0
 
 
-for i in range(200, 221, 20):
+for i in range(1, 21, 20):
     for symbol in get_all_symbols(i):
         score = check_score(check_symbol(symbol))
         if score >= 3:
