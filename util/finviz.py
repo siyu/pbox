@@ -58,7 +58,7 @@ def short_ratio_score(short_ratio):
     score = 0
     if short_ratio > 0.3:
         score = 1
-    elif 10 <= short_ratio <= 20:
+    elif 0.1 <= short_ratio <= 0.2:
         score = -1
     return score
 
@@ -112,7 +112,7 @@ def pred_overbought(d): return convert_num(d['RSI (14)']) > 60
 
 
 def check_score(d, *preds):
-    if any([f(d) for f in (pred_price, pred_vol, pred_mkt_cap) + preds]):
+    if any([f(d) for f in (pred_price, pred_vol, pred_mkt_cap, pred_overbought, pred_52w_high_chg) + preds]):
         return 0
 
     score = pe_score(convert_num(d['Forward P/E'])) + \
@@ -147,9 +147,9 @@ def convert_num(val):
         return 0
 
 
-for i in range(1, 21, 20):
+for i in range(2000, 3001, 20):
     for symbol in get_all_symbols(i):
         score = check_score(check_symbol(symbol))
-        if score >= 3:
+        if score >= 4:
             print('{}={}'.format(symbol, score))
 
