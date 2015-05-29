@@ -111,8 +111,8 @@ def pred_52w_high_chg(d): return convert_num(d['52W High']) > -0.2
 def pred_overbought(d): return convert_num(d['RSI (14)']) > 60
 
 
-def check_score(d, *preds):
-    if any([f(d) for f in (pred_price, pred_vol, pred_mkt_cap, pred_overbought, pred_52w_high_chg) + preds]):
+def check_score_common(d, *preds):
+    if any([f(d) for f in preds]):
         return 0
 
     score = pe_score(convert_num(d['Forward P/E'])) + \
@@ -127,6 +127,14 @@ def check_score(d, *preds):
             earning_growth_score(convert_num(d['EPS Q/Q']))
 
     return score
+
+
+def check_score_hold(d):
+    return check_score_common(d, pred_price, pred_vol, pred_mkt_cap)
+
+
+def check_score_buy(d):
+    return check_score_common(d, pred_price, pred_vol, pred_mkt_cap, pred_52w_high_chg, pred_overbought)
 
 
 def get_all_symbols(idx=1):
@@ -147,9 +155,9 @@ def convert_num(val):
         return 0
 
 
-for i in range(2000, 3001, 20):
+for i in range(3000, 4001, 20):
     for symbol in get_all_symbols(i):
-        score = check_score(check_symbol(symbol))
+        score = check_score_buy(check_symbol(symbol))
         if score >= 4:
             print('{}={}'.format(symbol, score))
 
