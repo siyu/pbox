@@ -47,7 +47,7 @@ def pb_score(pb):
 
 def recom_score(recom):
     score = 0
-    if 0 < recom < 1.5:
+    if 0 < recom <= 1.5:
         score = 1
     elif recom > 3:
         score = -1
@@ -108,7 +108,7 @@ def pred_mkt_cap(d): return convert_num(d['Market Cap']) < 100000000
 def pred_52w_high_chg(d): return convert_num(d['52W High']) > -0.2
 
 
-def pred_overbought(d): return convert_num(d['RSI (14)']) > 60
+def pred_overbought(d): return convert_num(d['RSI (14)']) > 40
 
 
 def check_score_common(d, *preds):
@@ -155,7 +155,7 @@ def convert_num(val):
         return 0
 
 
-for i in range(3000, 4001, 20):
+for i in range(1, 7021, 20):
     for symbol in get_all_symbols(i):
         score = check_score_buy(check_symbol(symbol))
         if score >= 4:
