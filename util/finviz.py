@@ -5,6 +5,7 @@ import pandas as pd
 
 def check_symbol(symbol):
     firm_df = pd.read_html("http://finviz.com/quote.ashx?t=" + symbol)[7]
+    firm_df[4][4] = 'EPS next Y %'
     firm_dict = dict(zip(firm_df.get_values().flatten().tolist()[::2], firm_df.get_values().flatten().tolist()[1::2]))
     return firm_dict
 
@@ -108,7 +109,21 @@ def pred_mkt_cap(d): return convert_num(d['Market Cap']) < 100000000
 def pred_52w_high_chg(d): return convert_num(d['52W High']) > -0.2
 
 
-def pred_overbought(d): return convert_num(d['RSI (14)']) > 60
+def pred_overbought(d): return convert_num(d['RSI (14)']) > 55
+
+
+def get_graham_value(d):
+    eps_ttm = convert_num(d['EPS (ttm)'])
+    eps_next_y = convert_num(d['EPS next Y'])
+    eps_growth_5y = convert_num(d['EPS next 5Y'])
+    graham_value = (eps_ttm + eps_next_y) / 2 * (8.5 + 2 * eps_growth_5y * 100) * 4.4 / 3.9
+    return graham_value
+
+
+def pred_graham_value(d):
+    px = convert_num(d['Price'])
+    graham_value = get_graham_value(d)
+    return (graham_value / px) > 1.25
 
 
 def check_score_common(d, *preds):
@@ -134,7 +149,7 @@ def check_score_hold(d):
 
 
 def check_score_buy(d):
-    return check_score_common(d, pred_price, pred_vol, pred_mkt_cap, pred_52w_high_chg, pred_overbought)
+    return check_score_common(d, pred_price, pred_vol, pred_mkt_cap, pred_52w_high_chg, pred_overbought, pred_graham_value)
 
 
 def get_all_symbols(idx=1):
