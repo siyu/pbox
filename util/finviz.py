@@ -123,7 +123,7 @@ def get_graham_value(d):
 def pred_graham_value(d):
     px = convert_num(d['Price'])
     graham_value = get_graham_value(d)
-    return (graham_value / px) <= 1.25
+    return (graham_value / px) < 1.23
 
 
 def check_score_common(d, *preds):
