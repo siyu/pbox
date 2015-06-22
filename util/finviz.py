@@ -7,6 +7,7 @@ def check_symbol(symbol):
     firm_df = pd.read_html("http://finviz.com/quote.ashx?t=" + symbol)[7]
     firm_df[4][4] = 'EPS next Y %'
     firm_dict = dict(zip(firm_df.get_values().flatten().tolist()[::2], firm_df.get_values().flatten().tolist()[1::2]))
+    firm_dict['symbol'] = symbol
     return firm_dict
 
 
@@ -109,7 +110,7 @@ def pred_mkt_cap(d): return convert_num(d['Market Cap']) < 100000000
 def pred_52w_high_chg(d): return convert_num(d['52W High']) > -0.2
 
 
-def pred_overbought(d): return convert_num(d['RSI (14)']) > 55
+def pred_overbought(d): return convert_num(d['RSI (14)']) > 60
 
 
 def get_graham_value(d):
@@ -122,8 +123,35 @@ def get_graham_value(d):
 
 def pred_graham_value(d):
     px = convert_num(d['Price'])
-    graham_value = get_graham_value(d)
-    return (graham_value / px) < 1.23
+    if px == 0:
+        return 0
+    return (get_graham_value(d) / px) < 1.2
+
+
+def get_ebit_value(d):
+    sales = convert_num(d['Sales'])
+    margin = (convert_num(d['Profit Margin']) + convert_num(d['Oper. Margin'])) / 2
+    operating_income = sales * margin
+    pe = convert_num(d['Forward P/E'])
+    business_value = operating_income * pe
+    yahoo_stat = pd.read_html('http://finance.yahoo.com/q/ks?s=' + d['symbol'] + '+Key+Statistics')
+    if len(yahoo_stat) == 4:
+        return 0
+    cash = convert_num(yahoo_stat[15][1][2])
+    total_debt = convert_num(yahoo_stat[15][1][4])
+    equity_value = business_value + cash - total_debt
+    shares_outstand = convert_num(d['Shs Outstand'])
+    if shares_outstand == 0:
+        return 0
+    ebit_value = equity_value / shares_outstand
+    return ebit_value
+
+
+def pred_ebit_value(d):
+    px = convert_num(d['Price'])
+    if px == 0:
+        return 0
+    return get_ebit_value(d) / px < 1.2
 
 
 def check_score_common(d, *preds):
@@ -149,7 +177,8 @@ def check_score_hold(d):
 
 
 def check_score_buy(d):
-    return check_score_common(d, pred_price, pred_vol, pred_mkt_cap, pred_52w_high_chg, pred_overbought, pred_graham_value)
+    return check_score_common(d, pred_price, pred_vol, pred_mkt_cap, pred_52w_high_chg, pred_overbought,
+                              pred_graham_value, pred_ebit_value)
 
 
 def get_all_symbols(idx=1):
@@ -169,10 +198,10 @@ def convert_num(val):
     except:
         return 0
 
-
-for i in range(1, 7021, 20):
+# 201-401-601-801
+for i in range(4301, 4501, 20):
     for symbol in get_all_symbols(i):
         score = check_score_buy(check_symbol(symbol))
-        if score >= 4:
+        if score >= 3:
             print('{}={}'.format(symbol, score))
 
