@@ -23,4 +23,6 @@ def get_team_stats(url):
 scores = get_team_scores(team_scores_url)
 team_stats = get_team_stats(team_stats_url)
 
+team_stats.loc[team_stats['Team']=='Golden State Warriors'].iloc[:,2:].values - team_stats.loc[team_stats['Team']=='Cleveland Cavaliers'].iloc[:,2:].values
+
 print('done')
