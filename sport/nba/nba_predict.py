@@ -52,14 +52,14 @@ def predict_rank():
     print(result.summary())
 
 
-def predict_by_stats():
+def predict_by_stats(games=[]):
     scores = get_team_scores(team_scores_url)
     num_scores = len(scores)
     team_stats = get_team_misc_stats()
     scores['home-away'] = scores['PTS.1'] - scores['PTS'] - 2  # home court adv = 2 pts
 
     # param_columns = ['FTr',	'3PAr',	'TS%',	'eFG%',	'TOV%',	'ORB%',	'FT/FGA',	'eFG%',	'TOV%',	'DRB%',	'FT/FGA']
-    param_columns = ['FTr',	'TS%',	'eFG%',	'TOV%',	'ORB%',	'FT/FGA',	'eFG%',	'TOV%',		'FT/FGA']
+    param_columns = ['FTr', 'TS%', 'eFG%', 'TOV%', 'ORB%', 'FT/FGA', 'eFG%', 'TOV%', 'FT/FGA']
     num_params = len(param_columns)
     x = np.zeros([num_scores, num_params])
 
@@ -74,10 +74,50 @@ def predict_by_stats():
     model = sm.OLS(y, x)
     result = model.fit()
     print(result.summary())
+    print()
+    for [home, away] in games:
+        spread = sum(result.params * (
+        team_stats.loc[team_stats['Team'] == home][param_columns].values - team_stats.loc[team_stats['Team'] == away][
+            param_columns].values)[0])
+        print('{} - {} = {}'.format(home, away, spread))
 
-# team_stats.loc[team_stats['Team']=='Golden State Warriors'][param_columns].values - team_stats.loc[team_stats['Team']=='Cleveland Cavaliers'][param_columns].values
-
-predict_by_stats()
-predict_rank()
+games = [['New York Knicks', 'Detroit Pistons'],
+         ['Houston Rockets', 'Atlanta Hawks'],
+         ['Memphis Grizzlies', 'Miami Heat'],
+         ['Oklahoma City Thunder', 'Milwaukee Bucks'],
+         ['Denver Nuggets', 'Cleveland Cavaliers']]
+predict_by_stats(games)
 
 print('done')
+
+
+# 8              Atlanta Hawks
+# 3             Boston Celtics
+# 26             Brooklyn Nets
+# 7          Charlotte Hornets
+# 11             Chicago Bulls
+# 5        Cleveland Cavaliers
+# 15          Dallas Mavericks
+# 25            Denver Nuggets
+# 14           Detroit Pistons
+# 0      Golden State Warriors
+# 21           Houston Rockets
+# 4             Indiana Pacers
+# 10      Los Angeles Clippers
+# 28        Los Angeles Lakers
+# 22         Memphis Grizzlies
+# 9                 Miami Heat
+# 27           Milwaukee Bucks
+# 23    Minnesota Timberwolves
+# 24      New Orleans Pelicans
+# 20           New York Knicks
+# 2      Oklahoma City Thunder
+# 13             Orlando Magic
+# 29        Philadelphia 76ers
+# 19              Phoenix Suns
+# 16    Portland Trail Blazers
+# 17          Sacramento Kings
+# 1          San Antonio Spurs
+# 6            Toronto Raptors
+# 12                 Utah Jazz
+# 18        Washington Wizards
