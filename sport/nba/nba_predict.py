@@ -4,7 +4,8 @@ import statsmodels.api as sm
 
 team_scores_url = 'http://www.basketball-reference.com/leagues/NBA_2016_games.html'
 team_stats_url = 'http://www.basketball-reference.com/leagues/NBA_2016.html'
-team_misc_url = 'nba_misc_stats.csv'
+team_misc_stats_url = 'http://widgets.sports-reference.com/wg.fcgi?css=1&site=bbr&url=%2Fleagues%2FNBA_2016.html&div=div_misc&del_col=1'
+team_ranking_url = 'http://widgets.sports-reference.com/wg.fcgi?css=1&site=bbr&url=%2Fleagues%2FNBA_2016_ratings.html&div=div_ratings&del_col=1'
 
 
 def get_team_scores(url):
@@ -18,13 +19,19 @@ def get_team_scores(url):
     return s
 
 
+def get_games_by_date(url, date_str):
+    s = pd.read_html(url)[0]
+    s = s[s['Date'] == date_str]
+    return s[['Home/Neutral', 'Visitor/Neutral']].values
+
+
 def get_team_stats(url):
     s = pd.read_html(url)[6]
     return s.iloc[:-1, :]
 
 
-def get_team_misc_stats():
-    s = pd.read_csv(team_misc_url)
+def get_team_misc_stats(url):
+    s = pd.read_html(url)[8]
     return s.iloc[:-1, :]
 
 
@@ -55,11 +62,12 @@ def predict_rank():
 def predict_by_stats(games=[]):
     scores = get_team_scores(team_scores_url)
     num_scores = len(scores)
-    team_stats = get_team_misc_stats()
+    team_stats = pd.read_html(team_misc_stats_url, header=1)[0].iloc[:-1, :]
     scores['home-away'] = scores['PTS.1'] - scores['PTS'] - 2  # home court adv = 2 pts
 
-    # param_columns = ['FTr',	'3PAr',	'TS%',	'eFG%',	'TOV%',	'ORB%',	'FT/FGA',	'eFG%',	'TOV%',	'DRB%',	'FT/FGA']
-    param_columns = ['FTr', 'TS%', 'eFG%', 'TOV%', 'ORB%', 'FT/FGA', 'eFG%', 'TOV%', 'FT/FGA']
+    param_columns = team_stats.columns[13:21].tolist()  # starts from column eFG%
+    param_columns.remove('FT/FGA')
+    param_columns.remove('FT/FGA.1')
     num_params = len(param_columns)
     x = np.zeros([num_scores, num_params])
 
@@ -75,49 +83,21 @@ def predict_by_stats(games=[]):
     result = model.fit()
     print(result.summary())
     print()
+
+    team_ranking = pd.read_html(team_ranking_url, header=1)[0]
+
+    print('{:22s} - {:22s} =  {:7s} | {:7s}'.format('home', 'away', 'fit mov', 'ref mov'))
     for [home, away] in games:
         spread = sum(result.params * (
-        team_stats.loc[team_stats['Team'] == home][param_columns].values - team_stats.loc[team_stats['Team'] == away][
-            param_columns].values)[0])
-        print('{} - {} = {}'.format(home, away, spread))
+            team_stats.loc[team_stats['Team'] == home][param_columns].values -
+            team_stats.loc[team_stats['Team'] == away][
+                param_columns].values)[0])
+        mov = team_ranking.loc[team_stats['Team'] == home]['MOV/A'].values - \
+              team_ranking.loc[team_stats['Team'] == away]['MOV/A'].values + 2
 
-games = [['New York Knicks', 'Detroit Pistons'],
-         ['Houston Rockets', 'Atlanta Hawks'],
-         ['Memphis Grizzlies', 'Miami Heat'],
-         ['Oklahoma City Thunder', 'Milwaukee Bucks'],
-         ['Denver Nuggets', 'Cleveland Cavaliers']]
+        print('{:22s} - {:22s} =  {:7.1f} | {:7.1f}'.format(home, away, spread, mov[0]))
+
+
+games = get_games_by_date(team_scores_url, 'Wed, Dec 30, 2015')
 predict_by_stats(games)
-
-print('done')
-
-
-# 8              Atlanta Hawks
-# 3             Boston Celtics
-# 26             Brooklyn Nets
-# 7          Charlotte Hornets
-# 11             Chicago Bulls
-# 5        Cleveland Cavaliers
-# 15          Dallas Mavericks
-# 25            Denver Nuggets
-# 14           Detroit Pistons
-# 0      Golden State Warriors
-# 21           Houston Rockets
-# 4             Indiana Pacers
-# 10      Los Angeles Clippers
-# 28        Los Angeles Lakers
-# 22         Memphis Grizzlies
-# 9                 Miami Heat
-# 27           Milwaukee Bucks
-# 23    Minnesota Timberwolves
-# 24      New Orleans Pelicans
-# 20           New York Knicks
-# 2      Oklahoma City Thunder
-# 13             Orlando Magic
-# 29        Philadelphia 76ers
-# 19              Phoenix Suns
-# 16    Portland Trail Blazers
-# 17          Sacramento Kings
-# 1          San Antonio Spurs
-# 6            Toronto Raptors
-# 12                 Utah Jazz
-# 18        Washington Wizards
+print()
