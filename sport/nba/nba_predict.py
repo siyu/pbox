@@ -59,6 +59,18 @@ def predict_rank():
     print(result.summary())
 
 
+def get_game_spreads():
+    game_spreads_df = pd.read_html('http://www.covers.com/odds/basketball/nba-spreads.aspx')[2]
+    game_spreads_df = game_spreads_df[game_spreads_df[2] == 'Matchup  Lines History'].values
+    game_spreads = {}
+    for game in game_spreads_df:
+        teams = game[0].split('  @')
+        home = teams[-1].split(' ')[-1]  # special case for LA
+        spread = float(game[3].split(' ')[-1])
+        game_spreads[home] = spread
+    return game_spreads
+
+
 def predict_by_stats(games=[]):
     scores = get_team_scores(team_scores_url)
     num_scores = len(scores)
@@ -85,19 +97,30 @@ def predict_by_stats(games=[]):
     print()
 
     team_ranking = pd.read_html(team_ranking_url, header=1)[0]
+    game_spreads = get_game_spreads()
 
-    print('{:22s} - {:22s} =  {:7s} | {:7s}'.format('home', 'away', 'fit mov', 'ref mov'))
+    print('{:22s} - {:22s} =  {:7s} | {:7s} | {:6s} | {:6s} | {:6s}'.format('home', 'away', 'fit mov', 'ref mov',
+                                                                            'spread', 'vs fit', 'vs mov'))
     for [home, away] in games:
-        spread = sum(result.params * (
+        fit_mov = sum(result.params * (
             team_stats.loc[team_stats['Team'] == home][param_columns].values -
             team_stats.loc[team_stats['Team'] == away][
                 param_columns].values)[0])
         mov = team_ranking.loc[team_stats['Team'] == home]['MOV/A'].values - \
               team_ranking.loc[team_stats['Team'] == away]['MOV/A'].values + 2
 
-        print('{:22s} - {:22s} =  {:7.1f} | {:7.1f}'.format(home, away, spread, mov[0]))
+        home_spread = -999
+        for k, v in game_spreads.items():
+            if home.find(k) > -1:
+                home_spread = v * -1
 
+        print('{:22s} - {:22s} =  {:7.1f} | {:7.1f} | {:6.1f} | {:>6s} | {:>6s}'.format(home, away, fit_mov, mov[0],
+                                                                                      home_spread,
+                                                                                      'home' if fit_mov > home_spread else 'away',
+                                                                                      'home' if mov > home_spread else 'away'
+                                                                                      ))
 
 games = get_games_by_date(team_scores_url, 'Wed, Dec 30, 2015')
 predict_by_stats(games)
+
 print()
