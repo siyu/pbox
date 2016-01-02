@@ -75,7 +75,7 @@ def predict_by_stats(games=[]):
     scores = get_team_scores(team_scores_url)
     num_scores = len(scores)
     team_stats = pd.read_html(team_misc_stats_url, header=1)[0].iloc[:-1, :]
-    scores['home-away'] = scores['PTS.1'] - scores['PTS'] - 2  # home court adv = 2 pts
+    scores['home-away'] = scores['PTS.1'] - scores['PTS'] - 2 # home court adv = 2 pts
 
     param_columns = team_stats.columns[13:21].tolist()  # starts from column eFG%
     param_columns.remove('FT/FGA')
@@ -105,7 +105,7 @@ def predict_by_stats(games=[]):
         fit_mov = sum(result.params * (
             team_stats.loc[team_stats['Team'] == home][param_columns].values -
             team_stats.loc[team_stats['Team'] == away][
-                param_columns].values)[0])
+                param_columns].values)[0]) + 2
         mov = team_ranking.loc[team_stats['Team'] == home]['MOV/A'].values - \
               team_ranking.loc[team_stats['Team'] == away]['MOV/A'].values + 2
 
@@ -120,7 +120,7 @@ def predict_by_stats(games=[]):
                                                                                       'home' if mov > home_spread else 'away'
                                                                                       ))
 
-games = get_games_by_date(team_scores_url, 'Wed, Dec 30, 2015')
+games = get_games_by_date(team_scores_url, 'Fri, Jan 1, 2016')
 predict_by_stats(games)
 
 print()
