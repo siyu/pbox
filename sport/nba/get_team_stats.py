@@ -25,7 +25,6 @@ soup = BeautifulSoup(browser.page_source, "html.parser")
 soup_team_stats = soup.find('div', id='all_team-stats-per_game').find_all(text=lambda text:isinstance(text,Comment))[0]
 team_stats_df = pd.read_html(soup_team_stats.__str__())[0]
 
-print(team_stats_df)
 # pt = 1
 # 3pt = 0.5
 # rebound = 1.25
@@ -44,5 +43,5 @@ team_stats_df['DK_Score'] = team_stats_df['PTS'] + \
                             team_stats_df['TOV']*-0.5
 
 # and print out the html for first game
-print(team_stats_df[['Team', 'DK_Score']].sort(['DK_Score']))
+print(team_stats_df[['Team', 'DK_Score']].iloc[:-1,:].sort(['DK_Score'],ascending=False).reset_index(drop=True))
 
