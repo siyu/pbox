@@ -2,10 +2,13 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 
+# http://www.covers.com/pageLoader/pageLoader.aspx?page=/data/nba/teams/pastresults/2014-2015/team404119.html
+
 team_scores_url = 'http://www.basketball-reference.com/leagues/NBA_2016_games.html'
 team_stats_url = 'http://www.basketball-reference.com/leagues/NBA_2016.html'
 team_misc_stats_url = 'http://widgets.sports-reference.com/wg.fcgi?css=1&site=bbr&url=%2Fleagues%2FNBA_2016.html&div=div_misc&del_col=1'
 team_ranking_url = 'http://widgets.sports-reference.com/wg.fcgi?css=1&site=bbr&url=%2Fleagues%2FNBA_2016_ratings.html&div=div_ratings&del_col=1'
+home_court_advantage = 1.5
 
 
 def get_team_scores(url):
@@ -36,12 +39,13 @@ def get_team_misc_stats(url):
 
 
 def predict_rank():
-    scores = get_team_scores(team_scores_url)
+    scores = get_team_scores(team_scores_url).tail(120).reset_index(drop=True)
     num_scores = len(scores)
     team_stats = get_team_stats(team_stats_url)
+    team_stats['Team'] = [t.strip('*') for t in team_stats['Team'].values]
     teams = sorted(team_stats['Team'].values)
     num_teams = len(teams)
-    scores['home-away'] = scores['PTS.1'] - scores['PTS'] - 2  # home court adv = 2 pts
+    scores['home-away'] = scores['PTS.1'] - scores['PTS'] - home_court_advantage
     x = np.zeros([num_scores, num_teams])
 
     for idx, row in scores.iterrows():
@@ -75,7 +79,9 @@ def predict_by_stats(games=[]):
     scores = get_team_scores(team_scores_url)
     num_scores = len(scores)
     team_stats = pd.read_html(team_misc_stats_url, header=1)[0].iloc[:-1, :]
-    scores['home-away'] = scores['PTS.1'] - scores['PTS'] - 2 # home court adv = 2 pts
+    team_stats['Team'] = [t.strip('*') for t in team_stats['Team'].values]
+
+    scores['home-away'] = scores['PTS.1'] - scores['PTS'] - home_court_advantage # home court adv = 2 pts
 
     param_columns = team_stats.columns[13:21].tolist()  # starts from column eFG%
     param_columns.remove('FT/FGA')
@@ -97,7 +103,7 @@ def predict_by_stats(games=[]):
     print()
 
     team_ranking = pd.read_html(team_ranking_url, header=1)[0]
-    game_spreads = get_game_spreads()
+    game_spreads = {} #get_game_spreads()
 
     print('{:22s} - {:22s} =  {:7s} | {:7s} | {:6s} | {:6s} | {:6s}'.format('home', 'away', 'fit mov', 'ref mov',
                                                                             'spread', 'vs fit', 'vs mov'))
@@ -105,7 +111,7 @@ def predict_by_stats(games=[]):
         fit_mov = sum(result.params * (
             team_stats.loc[team_stats['Team'] == home][param_columns].values -
             team_stats.loc[team_stats['Team'] == away][
-                param_columns].values)[0]) + 2
+                param_columns].values)[0]) + home_court_advantage
         mov = team_ranking.loc[team_stats['Team'] == home]['MOV/A'].values - \
               team_ranking.loc[team_stats['Team'] == away]['MOV/A'].values + 2
 
@@ -120,7 +126,9 @@ def predict_by_stats(games=[]):
                                                                                       'home' if mov > home_spread else 'away'
                                                                                       ))
 
-games = get_games_by_date(team_scores_url, 'Fri, Jan 1, 2016')
+games = get_games_by_date(team_scores_url, 'Sun Apr 10, 2016')
 predict_by_stats(games)
 
-print()
+predict_rank()
+
+print('Always bet away dogs')
