@@ -86,3 +86,14 @@ def player_stat_all():
     # player_stat_df.plot(kind='scatter', x='Min', y='dk_score_implied')
 
     return player_stat_df
+
+
+def injury_list():
+    df = pd.read_html('http://www.cbssports.com/nba/injuries/daily')
+    t = df[0]
+    t.columns = t.iloc[1]
+    t = t.reindex(t.index.drop(0))
+    t = t.reindex(t.index.drop(1))
+    players = t['Player'].values.tolist()
+
+    return [p.replace("'", '').replace(',', '').replace('.', '') for p in players]

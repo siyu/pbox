@@ -3,10 +3,10 @@ import random as r
 import numpy as np
 import pathos.multiprocessing as mp
 
-from sport.nba.get_player_stats import player_stat_all
+from sport.nba.get_player_stats import player_stat_all, injury_list
 
 
-def df_run(player_stat_file='input/DKSalaries_20161127_6g.csv',
+def df_run(player_stat_file='input/DKSalaries_20161128_7g.csv',
            NUM_SIM=1000000,
            MAX_ON=['Min', 240],
            MIN_AVG_PTS_PER_GAME=20,
@@ -93,9 +93,7 @@ def df_run(player_stat_file='input/DKSalaries_20161127_6g.csv',
     return best_players
 
 
-out_list = ['Paul George', 'Julius Randle', 'Jeremy Lin', 'DAngelo Russell', 'Dirk Nowitzki', 'JJ Barea', 'C.J. Miles',
-            'Nick Young','Deron Williams', 'Al-Farouq Aminu', 'Rondae Hollis-Jefferson', 'Larry Nance Jr.',
-            'Dante Cunningham', '']
+out_list = injury_list()
 lineup_1 = df_run(SKIP_PLAYER_LIST=out_list)
 lineup_2 = df_run(SKIP_PLAYER_LIST=out_list + r.sample(lineup_1.tolist(), 4))
 lineup_3 = df_run(MIN_PLAYER_SALARY=4500, SKIP_PLAYER_LIST=out_list)
