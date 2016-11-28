@@ -3,14 +3,15 @@ import random as r
 import numpy as np
 import pathos.multiprocessing as mp
 
+from sport.nba.get_player_stats import player_stat_all
 
-def df_run(player_stat_file='input/DKSalaries_20161125_5g_late.csv',
-           NUM_SIM=5000000,
-           MIN_TOTAL_TARGET_PTS=260,
+
+def df_run(player_stat_file='input/DKSalaries_20161127_6g.csv',
+           NUM_SIM=1000000,
+           MAX_ON=['Min', 240],
            MIN_AVG_PTS_PER_GAME=20,
-           MIN_PLAYER_SALARY=3200,
+           MIN_PLAYER_SALARY=3000,
            SKIP_PLAYER_LIST=[]):
-
     SALARY_CAP = 50000
     MIN_SALARY_USED = 49700
 
@@ -20,28 +21,36 @@ def df_run(player_stat_file='input/DKSalaries_20161125_5g_late.csv',
     def unique_list(l):
         return len(l) == len(set(l))
 
-    print('NUM_SIM={}, MIN_TOTAL_TARGET_PTS={}, MIN_AVG_PTS_PER_GAME={}, MIN_PLAYER_SALARY={}, SKIP_PLAYER_LIST={}'
-          .format(NUM_SIM, MIN_TOTAL_TARGET_PTS, MIN_AVG_PTS_PER_GAME, MIN_PLAYER_SALARY, SKIP_PLAYER_LIST))
+    print('NUM_SIM={}, MAX_ON={}, MIN_AVG_PTS_PER_GAME={}, MIN_PLAYER_SALARY={}, SKIP_PLAYER_LIST={}'
+          .format(NUM_SIM, MAX_ON, MIN_AVG_PTS_PER_GAME, MIN_PLAYER_SALARY, SKIP_PLAYER_LIST))
 
-    player_stat_df = pd.read_csv(player_stat_file)
-    print('Number of Players: {}'.format(len(player_stat_df)))
-    player_stat_df['P/S'] = player_stat_df['AvgPointsPerGame'] / player_stat_df['Salary'] * 1000
+    ps_dk_src = pd.read_csv(player_stat_file)
+    print('Number of Players: {}'.format(len(ps_dk_src)))
 
-    player_stat_df = player_stat_df[(player_stat_df['Salary'] >= MIN_PLAYER_SALARY) &
-                                    (player_stat_df['AvgPointsPerGame'] > MIN_AVG_PTS_PER_GAME) &
-                                    (player_stat_df['P/S'] >= 4.5) &
-                                    (np.logical_not(player_stat_df['Name'].isin(SKIP_PLAYER_LIST)))]
-    print('Number of Players after filter: {}'.format(len(player_stat_df)))
+    ps_nba_miner = player_stat_all()
+
+    SKIP_PLAYER_LIST = [n.replace("'",'').replace(',','').replace('.', '') for n in SKIP_PLAYER_LIST]
+    ps_dk_src['Name'] = ps_dk_src['Name'].str.replace("'", '')
+    ps_dk_src['Name'] = ps_dk_src['Name'].str.replace(',', '')
+    ps_dk_src['Name'] = ps_dk_src['Name'].str.replace('.', '')
+
+    ps_dk = pd.merge(ps_dk_src, ps_nba_miner, left_on='Name', right_on='Player', how='left')
+
+    ps_dk = ps_dk[(ps_dk['Salary'] >= MIN_PLAYER_SALARY) &
+                                    (ps_dk['dk_score_implied'] >= MIN_AVG_PTS_PER_GAME) &
+                                    (ps_dk['Min'] >= 30) &
+                                    (np.logical_not(ps_dk['Name'].isin(SKIP_PLAYER_LIST)))]
+    print('Number of Players after filter: {}'.format(len(ps_dk)))
     print()
 
-    pg_index = get_index_by_pos(player_stat_df, 'PG')
-    sg_index = get_index_by_pos(player_stat_df, 'SG')
-    sf_index = get_index_by_pos(player_stat_df, 'SF')
-    pf_index = get_index_by_pos(player_stat_df, 'PF')
-    c_index = get_index_by_pos(player_stat_df, 'C')
-    g_index = get_index_by_pos(player_stat_df, 'G')
-    f_index = get_index_by_pos(player_stat_df, 'F')
-    util_index = player_stat_df.index
+    pg_index = get_index_by_pos(ps_dk, 'PG')
+    sg_index = get_index_by_pos(ps_dk, 'SG')
+    sf_index = get_index_by_pos(ps_dk, 'SF')
+    pf_index = get_index_by_pos(ps_dk, 'PF')
+    c_index = get_index_by_pos(ps_dk, 'C')
+    g_index = get_index_by_pos(ps_dk, 'G')
+    f_index = get_index_by_pos(ps_dk, 'F')
+    util_index = ps_dk.index
 
     def sim(i):
         lineup = [r.choice(pg_index),
@@ -55,14 +64,14 @@ def df_run(player_stat_file='input/DKSalaries_20161125_5g_late.csv',
 
         if not unique_list(lineup): return
 
-        total_salary = player_stat_df.loc[lineup, 'Salary'].sum()
+        total_salary = ps_dk.loc[lineup, 'Salary'].sum()
 
         if total_salary > SALARY_CAP or total_salary < MIN_SALARY_USED: return
 
-        total_pts = player_stat_df.loc[lineup, 'AvgPointsPerGame'].sum()
+        total_max_on = ps_dk.loc[lineup, MAX_ON[0]].sum()
 
-        if total_pts > MIN_TOTAL_TARGET_PTS:
-            return [lineup, total_salary, total_pts]
+        if total_max_on > MAX_ON[1]:
+            return [lineup, total_salary, total_max_on]
 
     pool = mp.Pool(4)
 
@@ -73,17 +82,21 @@ def df_run(player_stat_file='input/DKSalaries_20161125_5g_late.csv',
     result = sorted(results, key=lambda a: a[2] if a else 0)
 
     best_result = result[-1]
-    best_result = [player_stat_df.loc[best_result[0], 'Name'].values, best_result[1], best_result[2]]
 
-    print(best_result)
+    print(ps_dk.loc[best_result[0], ['Name', 'Min', 'dk_score_implied', 'AvgPointsPerGame', 'Salary']].sum())
+    print(ps_dk.loc[best_result[0], ['Name', 'Min', 'dk_score_implied', 'AvgPointsPerGame']])
+    print(ps_dk.loc[best_result[0], 'Name'].values)
     print()
 
-    return best_result
+    best_players = ps_dk.loc[best_result[0], 'Name'].values
 
-out_list = ['J.J. Barea', 'Greg Monroe', 'Joel Embiid', 'Justise Winslow', 'Deron Williams'
-            'Reggie Jackson', 'Joakim Noah', 'Julius Randle', "D'Angelo Russell", 'T.J. Warren',
-            'Danilo Gallinari','Will Barton','Al-Farouq Aminu', 'Nick Young', '']
+    return best_players
+
+
+out_list = ['Paul George', 'Julius Randle', 'Jeremy Lin', 'DAngelo Russell', 'Dirk Nowitzki', 'JJ Barea', 'C.J. Miles',
+            'Nick Young','Deron Williams', 'Al-Farouq Aminu', 'Rondae Hollis-Jefferson', 'Larry Nance Jr.',
+            'Dante Cunningham', '']
 lineup_1 = df_run(SKIP_PLAYER_LIST=out_list)
-lineup_2 = df_run(SKIP_PLAYER_LIST=out_list+lineup_1[0][:4].tolist())
-lineup_3 = df_run(SKIP_PLAYER_LIST=out_list+lineup_1[0][4:].tolist())
-lineup_4 = df_run(SKIP_PLAYER_LIST=out_list+lineup_1[0].tolist())
+lineup_2 = df_run(SKIP_PLAYER_LIST=out_list + r.sample(lineup_1.tolist(), 4))
+lineup_3 = df_run(MIN_PLAYER_SALARY=4500, SKIP_PLAYER_LIST=out_list)
+lineup_4 = df_run(MIN_PLAYER_SALARY=4500, SKIP_PLAYER_LIST=out_list + r.sample(lineup_3.tolist(), 4))
