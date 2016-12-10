@@ -2,6 +2,7 @@ import platform
 from bs4 import BeautifulSoup, Comment
 from selenium import webdriver
 import pandas as pd
+import numpy as np
 
 
 def load_player_stat(url):
@@ -73,17 +74,24 @@ def player_stat_all():
 
     player_stat_df = pd.merge(player_basic_stat_df, player_adv_stat_df, on='Player')
 
-    player_stat_df['dk_score_implied'] = player_stat_df['Pts'].astype(float) + \
-                                         player_stat_df['3PTM'].astype(float) * 0.5 + \
-                                         player_stat_df['Reb'].astype(float) * 1.25 + \
-                                         player_stat_df['Ast'].astype(float) * 1.5 + \
-                                         player_stat_df['Stl'].astype(float) * 2 + \
-                                         player_stat_df['Blk'].astype(float) * 2 + \
-                                         player_stat_df['TO'].astype(float) * -0.5
+    player_stat_df['dk_score_calc'] = player_stat_df['Pts'].astype(float) + \
+                                      player_stat_df['3PTM'].astype(float) * 0.5 + \
+                                      player_stat_df['Reb'].astype(float) * 1.25 + \
+                                      player_stat_df['Ast'].astype(float) * 1.5 + \
+                                      player_stat_df['Stl'].astype(float) * 2 + \
+                                      player_stat_df['Blk'].astype(float) * 2 + \
+                                      player_stat_df['TO'].astype(float) * -0.5 + \
+                                      player_stat_df['Double Doubles'].astype(float) * 1.5 / player_stat_df[
+                                          'Games_y'].astype(float) + \
+                                      player_stat_df['Triple Doubles'].astype(float) * 3 / player_stat_df[
+                                          'Games_y'].astype(float)
+
+    player_stat_df['dk_score_calc'] = np.round(player_stat_df['dk_score_calc'], 1)
 
     player_stat_df['Min'] = player_stat_df['Min'].astype(float)
+    player_stat_df['pts/min'] = player_stat_df['dk_score_calc'] / player_stat_df['Min']
 
-    # player_stat_df.plot(kind='scatter', x='Min', y='dk_score_implied')
+    # player_stat_df.plot(kind='scatter', x='Min', y='dk_score_calc')
 
     return player_stat_df
 
@@ -97,3 +105,23 @@ def injury_list():
     players = t['Player'].values.tolist()
 
     return [p.replace("'", '').replace(',', '').replace('.', '') for p in players]
+
+
+def player_gamelog():
+    p = pd.read_html('http://www.basketball-reference.com/players/w/westbru01/gamelog/2017/')[7]
+    p = pd.read_html('http://www.basketball-reference.com/players/w/aldrila01/gamelog/2017/')[7]
+
+    # remove extra rows
+    p = p[p['GS'] == '1']
+
+    p['dk_score_calc'] = p['PTS'].astype(float) + \
+                         p['3P'].astype(float) * 0.5 + \
+                         p['TRB'].astype(float) * 1.25 + \
+                         p['AST'].astype(float) * 1.5 + \
+                         p['STL'].astype(float) * 2 + \
+                         p['BLK'].astype(float) * 2 + \
+                         p['TOV'].astype(float) * -0.5
+
+    return {'mean': p['dk_score_calc'].mean(), 'std': p['dk_score_calc'].std()}
+
+    # TODO: add double-double and triple-double
