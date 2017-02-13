@@ -126,6 +126,8 @@ def player_gamelog(player_name):
         name_in_url = 'bareajo01'
     elif player_name == 'Tim Hardaway Jr':
         name_in_url = 'hardati02'
+    elif player_name == 'Guillermo Hernangomez':
+        name_in_url = 'hernawi01'
 
     # p = pd.read_html('http://www.basketball-reference.com/players/w/westbru01/gamelog/2017/')[7]
     url = 'http://www.basketball-reference.com/players/w/{}/gamelog/2017/'.format(name_in_url)
@@ -158,7 +160,11 @@ def player_gamelog(player_name):
     p = p.loc[p['dk_score_calc'] != p['dk_score_calc'].min()]
     p = p.loc[p['dk_score_calc'] != p['dk_score_calc'].max()]
 
-    return {'mean': p['dk_score_calc'].mean(), 'std': p['dk_score_calc'].std(), 'hist': p}
+    return {'mean': p['dk_score_calc'].mean(),
+            'std': p['dk_score_calc'].std(),
+            'ceiling':p['dk_score_calc'].mean() + p['dk_score_calc'].std() * 2,
+            'floor':p['dk_score_calc'].mean() - p['dk_score_calc'].std() * 2,
+            'hist': p}
 
 
 def get_team_stat():
